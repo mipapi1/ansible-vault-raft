@@ -1,0 +1,99 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Version updates for this role: the Vault package version in defaults, and CI.",
+  "extends": [
+    "config:recommended"
+  ],
+  "schedule": [
+    "* 0-5 * * 1"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": [
+    "dependencies"
+  ],
+  "automerge": false,
+  "dependencyDashboard": true,
+  "enabledManagers": [
+    "custom.regex",
+    "github-actions"
+  ],
+  "customManagers": [
+    {
+      "description": "Versions in defaults, annotated with a '# renovate:' comment on the line above",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^defaults/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[a-z0-9_]+_version: \"(?<currentValue>[^\"]+)\""
+      ],
+      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      "description": "Python tools installed by CI with pip",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "(?<depName>ansible-core|ansible-lint)==(?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "description": "Container images run by CI steps (docker run)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "docker run [^\\n]*?(?<depName>(?:ghcr\\.io|docker\\.io)/[a-z0-9.\\-/]+):(?<currentValue>v?[0-9][^\\s@]*)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "GitHub Actions: one PR for all minor and patch updates",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Vault: read the upgrade notes first (a rolling upgrade, standbys before the leader). Every update waits for approval on the Dependency Dashboard; release candidates and enterprise builds are skipped.",
+      "matchPackageNames": [
+        "hashicorp/vault"
+      ],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "ansible-core and ansible-lint are installed together in CI",
+      "matchPackageNames": [
+        "ansible-core",
+        "ansible-lint"
+      ],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "groupName": "ansible tools"
+    },
+    {
+      "description": "New runner images (ubuntu-XX.04) can break the CI steps: wait for approval on the Dependency Dashboard",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDepNames": [
+        "ubuntu"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
