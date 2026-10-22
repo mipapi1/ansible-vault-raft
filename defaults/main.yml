@@ -1,6 +1,7 @@
 ---
 # Package version without the Debian revision ("1.21.4", not "1.21.4-1"). The package
 # is held: apt never upgrades (and so never restarts and seals) Vault behind your back.
+# renovate: datasource=github-tags depName=hashicorp/vault
 vault_version: "1.21.4"
 
 # Raft node ID; also used in the certificate
