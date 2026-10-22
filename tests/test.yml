@@ -1,0 +1,10 @@
+---
+# Runs the role against the machine it's on (CI: a throwaway GitHub runner VM).
+- name: Vault server
+  hosts: all
+  become: true
+  vars:
+    vault_admin_networks: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+    vault_api_addr: https://vault.example.com
+  roles:
+    - role: vault_raft

@@ -1,0 +1,66 @@
+---
+# The vault user may write only its data and audit log directories: config and
+# certificates are root-owned and read-only to it (hardening guide).
+- name: Config directory readable but not writable by vault
+  ansible.builtin.file:
+    path: /etc/vault.d
+    state: directory
+    owner: root
+    group: vault
+    mode: "0750"
+
+# systemd reads it into Vault's environment at start: vault must not write it
+- name: Environment file read-only to vault
+  ansible.builtin.file:
+    path: /etc/vault.d/vault.env
+    owner: root
+    group: vault
+    mode: "0640"
+
+- name: Data directory
+  ansible.builtin.file:
+    path: "{{ vault_data_dir }}"
+    state: directory
+    owner: vault
+    group: vault
+    mode: "0700"
+
+- name: Audit log directory
+  ansible.builtin.file:
+    path: "{{ vault_log_dir }}"
+    state: directory
+    owner: vault
+    group: vault
+    mode: "0750"
+
+# A config change is NOT applied automatically: most settings need a restart, and
+# a restart seals Vault. The handler only reminds; restart + unseal by hand.
+- name: Vault configuration
+  ansible.builtin.template:
+    src: vault.hcl.j2
+    dest: /etc/vault.d/vault.hcl
+    owner: root
+    group: vault
+    mode: "0640"
+  notify: Remind to restart vault
+
+# Vault reopens the audit log on SIGHUP (the unit's ExecReload)
+- name: Rotate the audit log
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/vault
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {{ vault_log_dir }}/*.log {
+        daily
+        rotate {{ vault_audit_log_keep_days }}
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 0640 vault vault
+        postrotate
+          systemctl reload vault >/dev/null 2>&1 || true
+        endscript
+      }

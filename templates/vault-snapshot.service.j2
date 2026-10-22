@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Vault Raft snapshot
+After=vault.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vault-snapshot
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes

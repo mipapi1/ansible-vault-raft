@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Nightly Vault Raft snapshot
+
+[Timer]
+OnCalendar={{ vault_snapshot_on_calendar }}
+# Catch up after the VM was off at the scheduled time
+Persistent=true
+
+[Install]
+WantedBy=timers.target

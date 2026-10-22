@@ -1,0 +1,39 @@
+---
+# deb822_repository needs python3-debian on the host
+- name: Install the apt repository tooling
+  ansible.builtin.apt:
+    name: python3-debian
+    state: present
+    update_cache: true
+
+- name: Add the HashiCorp apt repository
+  ansible.builtin.deb822_repository:
+    name: hashicorp
+    types: deb
+    uris: https://apt.releases.hashicorp.com
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: https://apt.releases.hashicorp.com/gpg
+
+# The package never restarts Vault on upgrade (its postinst only runs
+# daemon-reload), and the hold keeps unattended-upgrades and `apt upgrade` away
+# from it. A new version installed here only runs after a deliberate restart +
+# unseal (README "Upgrade"). /etc/vault.d/vault.hcl is a conffile: the apt
+# module's default force-confold keeps ours.
+- name: Install the pinned Vault version
+  ansible.builtin.apt:
+    name: "vault={{ vault_version }}-1"
+    update_cache: true
+    allow_change_held_packages: true
+  notify: Remind that the new version needs a restart
+
+- name: Hold the Vault package
+  ansible.builtin.dpkg_selections:
+    name: vault
+    selection: hold
+
+# Python cryptography for the community.crypto tasks
+- name: Install the certificate tooling
+  ansible.builtin.apt:
+    name: python3-cryptography
+    state: present

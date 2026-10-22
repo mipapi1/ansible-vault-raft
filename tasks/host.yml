@@ -1,0 +1,19 @@
+---
+# No swap: secrets in Vault's memory must never be paged to disk. With Raft,
+# HashiCorp recommends disable_mlock = true plus no swap (mlock doesn't mix with
+# Raft's memory-mapped database).
+- name: Turn swap off
+  ansible.builtin.command: swapoff -a
+  register: vault_swapoff
+  changed_when: false
+  # In a container, swap is the host's (swapoff fails there)
+  when:
+    - ansible_facts.swaptotal_mb | int > 0
+    - ansible_facts.virtualization_role != 'guest' or
+      ansible_facts.virtualization_type not in ['docker', 'container', 'containerd', 'podman', 'lxc']
+
+- name: Keep swap off after reboots
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'

@@ -1,0 +1,67 @@
+---
+argument_specs:
+  main:
+    short_description: Vault server with integrated storage (Raft) on Debian/Ubuntu
+    options:
+      vault_version:
+        type: str
+        default: "1.21.4"
+        description: Package version without the Debian revision. The package is held.
+      vault_node_id:
+        type: str
+        description: Raft node ID, also a name in the certificate. Default is the hostname.
+      vault_ip:
+        type: str
+        description: Address in the certificate and cluster_addr. Default is the default IPv4.
+      vault_api_addr:
+        type: str
+        description: Address clients use (a proxy's name, or the node). Default https://<vault_ip>:8200.
+      vault_cluster_addr:
+        type: str
+        description: Raft cluster address. Default https://<vault_ip>:8201.
+      vault_proxy_addrs:
+        type: list
+        elements: str
+        default: []
+        description: Proxies whose X-Forwarded-For Vault trusts.
+      vault_firewall:
+        type: bool
+        default: true
+        description: Manage ufw (SSH and :8200 from vault_admin_networks only).
+      vault_admin_networks:
+        type: list
+        elements: str
+        default: []
+        description: Networks allowed to SSH and reach :8200. Required when vault_firewall is on.
+      vault_data_dir:
+        type: path
+        default: /opt/vault/data
+        description: Raft data directory.
+      vault_tls_dir:
+        type: path
+        default: /opt/vault/tls
+        description: Listener certificate and key.
+      vault_log_dir:
+        type: path
+        default: /var/log/vault
+        description: Audit log directory (rotated daily).
+      vault_audit_log_keep_days:
+        type: int
+        default: 14
+        description: Days of audit logs logrotate keeps.
+      vault_service_enabled:
+        type: bool
+        default: true
+        description: Enable and start Vault. false installs and configures only.
+      vault_snapshot_dir:
+        type: path
+        default: /var/backups/vault
+        description: Where nightly Raft snapshots go.
+      vault_snapshot_on_calendar:
+        type: str
+        default: "*-*-* 20:30:00"
+        description: systemd OnCalendar of the snapshot timer.
+      vault_snapshot_keep_days:
+        type: int
+        default: 14
+        description: Days of snapshots kept.

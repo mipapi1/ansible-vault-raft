@@ -1,0 +1,30 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Saves a Raft snapshot, renews the (periodic) snapshot token, prunes old snapshots.
+set -euo pipefail
+
+TOKEN_FILE=/etc/vault.d/snapshot.token
+DIR={{ vault_snapshot_dir }}
+
+export VAULT_ADDR=https://127.0.0.1:8200
+export VAULT_CACERT={{ vault_tls_dir }}/vault.crt
+
+if [ ! -s "$TOKEN_FILE" ]; then
+  echo "No snapshot token in $TOKEN_FILE (README \"Snapshots\")" >&2
+  exit 1
+fi
+VAULT_TOKEN="$(cat "$TOKEN_FILE")"
+export VAULT_TOKEN
+
+out="$DIR/vault-$(date +%F_%H%M).snap"
+vault operator raft snapshot save "$out.partial"
+mv "$out.partial" "$out"
+
+# Periodic token: each renewal extends it by its period, so it never expires
+# while this runs nightly.
+vault token renew >/dev/null
+
+find "$DIR" -name 'vault-*.snap' -mtime +{{ vault_snapshot_keep_days }} -delete
+find "$DIR" -name '*.partial' -delete
+
+echo "Saved $out ($(du -h "$out" | cut -f1))"

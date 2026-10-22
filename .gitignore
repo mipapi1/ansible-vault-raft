@@ -1,0 +1,5 @@
+*.retry
+.DS_Store
+collections/
+*.snap
+*.token

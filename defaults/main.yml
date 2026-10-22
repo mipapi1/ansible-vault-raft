@@ -1,0 +1,36 @@
+---
+# Package version without the Debian revision ("1.21.4", not "1.21.4-1"). The package
+# is held: apt never upgrades (and so never restarts and seals) Vault behind your back.
+vault_version: "1.21.4"
+
+# Raft node ID; also used in the certificate
+vault_node_id: "{{ ansible_facts.hostname }}"
+vault_ip: "{{ ansible_facts.default_ipv4.address }}"
+
+# Address clients use: a proxy's public name, or the node itself. cluster_addr is
+# required by Raft even on one node.
+vault_api_addr: "https://{{ vault_ip }}:8200"
+vault_cluster_addr: "https://{{ vault_ip }}:8201"
+
+# Proxies whose X-Forwarded-For Vault trusts (real client IPs in the audit log)
+vault_proxy_addrs: []
+
+# Host firewall (ufw): SSH and :8200 only from vault_admin_networks, :8200 also from
+# vault_proxy_addrs, everything else inbound denied. vault_admin_networks must include
+# where you run Ansible from, or enabling ufw locks you out (the role refuses an
+# empty list).
+vault_firewall: true
+vault_admin_networks: []
+
+vault_data_dir: /opt/vault/data
+vault_tls_dir: /opt/vault/tls
+vault_log_dir: /var/log/vault
+vault_audit_log_keep_days: 14
+
+# false = install and configure, but don't start (e.g. before moving data in)
+vault_service_enabled: true
+
+# Nightly Raft snapshot; schedule it before the VM's own backup picks the disk up
+vault_snapshot_dir: /var/backups/vault
+vault_snapshot_on_calendar: "*-*-* 20:30:00"
+vault_snapshot_keep_days: 14

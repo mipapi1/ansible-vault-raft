@@ -1,0 +1,51 @@
+---
+# Self-signed certificate for the HAProxy -> Vault hop and for direct (break-glass)
+# access. Clients going through a TLS proxy see the proxy's certificate instead.
+# The package's own /opt/vault/tls/tls.{crt,key} (no SANs) are left in place: their
+# presence makes the package's postinst skip regenerating them on upgrades.
+# The package makes these directories vault-owned; root-owned, Vault can't swap its
+# own certificate (or rename the directory) behind our back.
+- name: Root-owned /opt/vault and TLS directory
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: /opt/vault, group: root, mode: "0755"}
+    - {path: "{{ vault_tls_dir }}", group: vault, mode: "0750"}
+
+- name: Vault TLS private key
+  community.crypto.openssl_privatekey:
+    path: "{{ vault_tls_dir }}/vault.key"
+    type: ECC
+    curve: secp384r1
+    owner: root
+    group: vault
+    mode: "0640"
+
+- name: Vault TLS certificate request
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ vault_tls_dir }}/vault.key"
+    common_name: "{{ vault_api_addr | urlsplit('hostname') }}"
+    subject_alt_name:
+      - "DNS:{{ vault_api_addr | urlsplit('hostname') }}"
+      - "DNS:{{ vault_node_id }}"
+      - "IP:{{ vault_ip }}"
+      - "IP:127.0.0.1"
+  register: vault_csr
+  changed_when: false
+
+- name: Vault TLS certificate
+  community.crypto.x509_certificate:
+    path: "{{ vault_tls_dir }}/vault.crt"
+    csr_content: "{{ vault_csr.csr }}"
+    privatekey_path: "{{ vault_tls_dir }}/vault.key"
+    provider: selfsigned
+    selfsigned_not_after: "+1825d"
+    owner: root
+    group: vault
+    mode: "0644"
+  # SIGHUP makes Vault pick up a new certificate without a restart (no reseal)
+  notify: Reload vault

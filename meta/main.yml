@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: vault_raft
+  namespace: mipapi1
+  author: mipapi1
+  description: >-
+    HashiCorp Vault on a dedicated VM: official package, systemd, integrated storage
+    (Raft), TLS, host firewall, nightly snapshots. Never restarts (and so never
+    seals) a running Vault.
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [jammy, noble]
+    - name: Debian
+      versions: [bookworm, trixie]
+  galaxy_tags: [vault, hashicorp, raft, secrets, security]
+dependencies: []

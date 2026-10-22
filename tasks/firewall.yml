@@ -1,0 +1,28 @@
+---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+# Allow rules first, then enable: enabling with no SSH rule would lock Ansible out.
+- name: Allow SSH from the admin networks
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "22"
+    src: "{{ item }}"
+  loop: "{{ vault_admin_networks }}"
+
+- name: Allow the Vault API from the proxies and the admin networks
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "8200"
+    src: "{{ item }}"
+  loop: "{{ vault_proxy_addrs + vault_admin_networks }}"
+
+- name: Deny everything else inbound and enable ufw
+  community.general.ufw:
+    state: enabled
+    default: deny
+    direction: incoming

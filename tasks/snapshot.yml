@@ -1,0 +1,41 @@
+---
+# Nightly `vault operator raft snapshot save` into a local directory, so a nightly
+# backup of the VM's disk carries the snapshots off the host.
+# Snapshots are encrypted by Vault's barrier: useless without the unseal keys.
+#
+# The token lives only on the host (/etc/vault.d/snapshot.token, root 0600) and is
+# installed once by hand (README "Snapshots"): no secret passes through Ansible.
+- name: Snapshot directory
+  ansible.builtin.file:
+    path: "{{ vault_snapshot_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Snapshot script
+  ansible.builtin.template:
+    src: vault-snapshot.sh.j2
+    dest: /usr/local/sbin/vault-snapshot
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Snapshot service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - vault-snapshot.service
+    - vault-snapshot.timer
+
+- name: Enable the snapshot timer
+  ansible.builtin.systemd_service:
+    name: vault-snapshot.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: vault_service_enabled | bool

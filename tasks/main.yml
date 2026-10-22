@@ -1,0 +1,40 @@
+---
+# Single-tenant Vault host, following HashiCorp's production hardening guide:
+# official package (its systemd unit runs as the `vault` user with sandboxing and
+# core dumps off), no swap, root-owned config, TLS on the listener, host firewall.
+- name: Check the firewall settings can't lock Ansible out
+  ansible.builtin.assert:
+    that: vault_admin_networks | length > 0
+    fail_msg: >-
+      vault_firewall is on but vault_admin_networks is empty: enabling ufw would block
+      SSH from everywhere. Set vault_admin_networks (include where Ansible runs from)
+      or vault_firewall: false.
+    quiet: true
+  when: vault_firewall | bool
+
+- name: No swap
+  ansible.builtin.import_tasks: host.yml
+
+- name: Host firewall
+  ansible.builtin.import_tasks: firewall.yml
+  when: vault_firewall | bool
+
+- name: Install Vault
+  ansible.builtin.import_tasks: install.yml
+
+- name: TLS certificate for the listener
+  ansible.builtin.import_tasks: tls.yml
+
+- name: Vault configuration
+  ansible.builtin.import_tasks: config.yml
+
+- name: Nightly Raft snapshot
+  ansible.builtin.import_tasks: snapshot.yml
+
+# Starts Vault if it's stopped; never restarts a running one (a restart seals it).
+- name: Enable and start Vault
+  ansible.builtin.systemd_service:
+    name: vault
+    enabled: true
+    state: started
+  when: vault_service_enabled | bool
